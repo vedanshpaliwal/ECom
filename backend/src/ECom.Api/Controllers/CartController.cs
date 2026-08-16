@@ -1,0 +1,10 @@
+using System.Security.Claims; using Microsoft.AspNetCore.Authorization; using Microsoft.AspNetCore.Mvc; using Microsoft.EntityFrameworkCore;
+[ApiController,Authorize,Route("api/cart")]
+public sealed class CartController(EComDbContext db):ControllerBase
+{
+ long UserId=>long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+ [HttpGet] public async Task<IActionResult> Get(){var cart=await db.Carts.Include(c=>c.Items).ThenInclude(i=>i.Product).ThenInclude(p=>p.Images).SingleOrDefaultAsync(c=>c.UserId==UserId);return Ok(cart?.Items.Select(i=>new{i.Id,i.ProductId,i.Quantity,i.UnitPrice,i.Product.Name,Image=i.Product.Images.OrderBy(x=>x.DisplayOrder).Select(x=>x.Url).FirstOrDefault(),LineTotal=i.UnitPrice*i.Quantity})??[]);}
+ [HttpPost("items")] public async Task<IActionResult> Add(AddCartItemRequest r){if(r.Quantity<1)return BadRequest();var p=await db.Products.SingleOrDefaultAsync(x=>x.Id==r.ProductId&&x.IsActive&&!x.IsDeleted);if(p is null)return NotFound();if(p.StockQuantity<r.Quantity)return BadRequest(new{message="Insufficient stock."});var c=await db.Carts.Include(x=>x.Items).SingleOrDefaultAsync(x=>x.UserId==UserId);if(c is null){c=new Cart{UserId=UserId};db.Carts.Add(c);}var item=c.Items.SingleOrDefault(x=>x.ProductId==p.Id);if(item is null)c.Items.Add(new CartItem{ProductId=p.Id,Quantity=r.Quantity,UnitPrice=p.Price});else{item.Quantity+=r.Quantity;if(item.Quantity>p.StockQuantity)return BadRequest(new{message="Insufficient stock."});item.UnitPrice=p.Price;}c.UpdatedAt=DateTimeOffset.UtcNow;await db.SaveChangesAsync();return Ok();}
+ [HttpDelete("items/{id:long}")] public async Task<IActionResult> Remove(long id){var item=await db.CartItems.Include(x=>x.Cart).SingleOrDefaultAsync(x=>x.Id==id&&x.Cart.UserId==UserId);if(item is null)return NotFound();db.CartItems.Remove(item);await db.SaveChangesAsync();return NoContent();}
+}
+public sealed record AddCartItemRequest(long ProductId,int Quantity);
