@@ -1,0 +1,1 @@
+INSERT INTO categories (name,slug,description,is_active,display_order,created_at) VALUES ('Woolen Flowers','woolen-flowers','Handcrafted woolen flowers.',true,1,NOW()),('Flower Bouquets','flower-bouquets','Gift-ready handmade bouquets.',true,2,NOW()),('Resin Art','resin-art','Decorative handmade resin artwork.',true,3,NOW()) ON CONFLICT (slug) DO NOTHING;
