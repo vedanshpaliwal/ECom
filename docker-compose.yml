@@ -1,16 +1,14 @@
 services:
-  postgres:
-    image: postgres:17-alpine
-    container_name: ecom-postgres
+  mongodb:
+    image: mongo:8
+    container_name: ecom-mongodb
     restart: unless-stopped
-    environment:
-      POSTGRES_DB: ecom
-      POSTGRES_USER: ecom
-      POSTGRES_PASSWORD: ecom_dev_password
     ports:
-      - "5432:5432"
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: ecom
     volumes:
-      - ecom-postgres-data:/var/lib/postgresql/data
+      - ecom-mongodb-data:/data/db
 
 volumes:
-  ecom-postgres-data:
+  ecom-mongodb-data:
