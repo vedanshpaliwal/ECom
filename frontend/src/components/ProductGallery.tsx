@@ -1,0 +1,2 @@
+import {useState} from 'react';
+export default function ProductGallery({images}:{images:{url:string}[]}){const[active,setActive]=useState(0);const list=images.length?images:[{url:'https://images.unsplash.com/photo-1455587734955-081b22074882?auto=format&fit=crop&w=1000&q=80'}];return <div className="gallery"><div className="heroImage"><img src={list[active].url} alt="Product"/></div><div className="thumbs">{list.map((x,i)=><button key={x.url+i} onClick={()=>setActive(i)} className={i===active?'active':''}><img src={x.url}/></button>)}</div></div>}
