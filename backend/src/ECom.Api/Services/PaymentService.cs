@@ -1,14 +1,8 @@
-public interface IPaymentService { Task<PaymentInitiation> InitiateAsync(Order order); }
+public interface IPaymentService{Task<PaymentInitiation> InitiateAsync(Order order,CancellationToken cancellationToken=default);Task<PaymentVerification> VerifyAsync(string orderNumber,IReadOnlyDictionary<string,string> callback,CancellationToken cancellationToken=default);}
 public sealed record PaymentInitiation(string Gateway,string Status,string? RedirectUrl);
-
-// Paytm is deliberately isolated behind this interface. Production credentials and merchant configuration
-// must come from environment/secret storage; no keys are committed to source control.
+public sealed record PaymentVerification(bool Success,string Status,string? TransactionId,string? Error);
 public sealed class PaytmPaymentService(IConfiguration configuration):IPaymentService
 {
- public Task<PaymentInitiation> InitiateAsync(Order order)
- {
-   var configured=configuration["Paytm:Enabled"]?.Equals("true",StringComparison.OrdinalIgnoreCase)==true;
-   if(!configured) return Task.FromResult(new PaymentInitiation("PAYTM","CONFIGURATION_REQUIRED",null));
-   return Task.FromResult(new PaymentInitiation("PAYTM","READY_FOR_GATEWAY_CONFIGURATION",null));
- }
+ public Task<PaymentInitiation> InitiateAsync(Order order,CancellationToken cancellationToken=default){var enabled=configuration["Paytm:Enabled"]?.Equals("true",StringComparison.OrdinalIgnoreCase)==true;if(!enabled)return Task.FromResult(new PaymentInitiation("PAYTM","CONFIGURATION_REQUIRED",null));return Task.FromResult(new PaymentInitiation("PAYTM","READY_FOR_GATEWAY_CONFIGURATION",configuration["Paytm:CheckoutUrl"]));}
+ public Task<PaymentVerification> VerifyAsync(string orderNumber,IReadOnlyDictionary<string,string> callback,CancellationToken cancellationToken=default){var status=callback.TryGetValue("STATUS",out var s)?s:"";var txn=callback.TryGetValue("TXNID",out var t)?t:null;var success=status.Equals("TXN_SUCCESS",StringComparison.OrdinalIgnoreCase);return Task.FromResult(new PaymentVerification(success,success?"SUCCESS":"FAILED",txn,success?null:"Payment gateway verification is not configured."));}
 }
