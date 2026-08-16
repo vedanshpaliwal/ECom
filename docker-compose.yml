@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: ecom-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ecom
+      POSTGRES_USER: ecom
+      POSTGRES_PASSWORD: ecom_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - ecom-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  ecom-postgres-data:
