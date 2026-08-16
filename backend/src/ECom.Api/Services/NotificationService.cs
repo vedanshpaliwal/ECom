@@ -1,14 +1,8 @@
-public interface INotificationService
+using System.Net;using System.Net.Mail;using System.Net.Http.Json;using Microsoft.EntityFrameworkCore;
+public interface INotificationService{Task NotifyOrderAsync(Order order,CancellationToken cancellationToken=default);}
+public sealed class NotificationService(IConfiguration config,EComDbContext db,IHttpClientFactory clients):INotificationService
 {
-    Task NotifyOrderAsync(Order order, CancellationToken cancellationToken = default);
-}
-
-public sealed class NotificationService(IConfiguration configuration, IHttpClientFactory httpClientFactory) : INotificationService
-{
-    public async Task NotifyOrderAsync(Order order, CancellationToken cancellationToken = default)
-    {
-        // Email/WhatsApp providers are intentionally configured through secrets.
-        // This method is the single application boundary for post-order notifications.
-        await Task.CompletedTask;
-    }
+ public async Task NotifyOrderAsync(Order order,CancellationToken cancellationToken=default){var o=await db.Orders.AsNoTracking().Include(x=>x.Items).Include(x=>x.ShippingAddress).SingleAsync(x=>x.Id==order.Id,cancellationToken);var body=$"Order {o.OrderNumber} confirmed. Total INR {o.TotalAmount:N2}. Items: {string.Join(", ",o.Items.Select(i=>$"{i.ProductName} x{i.Quantity}"))}. Estimated delivery {o.EstimatedDeliveryFrom:dd MMM yyyy} - {o.EstimatedDeliveryTo:dd MMM yyyy}.";await SendEmail(body,cancellationToken);await SendWhatsApp(o.ShippingAddress.Phone,body,cancellationToken);}
+ async Task SendEmail(string body,CancellationToken ct){var host=config["Notifications:Email:Host"];var from=config["Notifications:Email:From"];var to=config["Notifications:Email:To"];if(string.IsNullOrWhiteSpace(host)||string.IsNullOrWhiteSpace(from)||string.IsNullOrWhiteSpace(to))return;using var smtp=new SmtpClient(host,int.TryParse(config["Notifications:Email:Port"],out var port)?port:587){EnableSsl=true,Credentials=new NetworkCredential(config["Notifications:Email:Username"],config["Notifications:Email:Password"])};using var mail=new MailMessage(from,to,"ECom order confirmation",body);await smtp.SendMailAsync(mail,ct);}
+ async Task SendWhatsApp(string phone,string body,CancellationToken ct){var url=config["Notifications:WhatsApp:ApiUrl"];var token=config["Notifications:WhatsApp:Token"];if(string.IsNullOrWhiteSpace(url)||string.IsNullOrWhiteSpace(token))return;var client=clients.CreateClient();client.DefaultRequestHeaders.Authorization=new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer",token);await client.PostAsJsonAsync(url,new{to=phone,message=body},ct);}
 }
