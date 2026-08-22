@@ -3,6 +3,7 @@ const KEY='ecom_cart';
 export function getCart():CartItem[]{try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch{return[]}}
 export function saveCart(items:CartItem[]){localStorage.setItem(KEY,JSON.stringify(items));window.dispatchEvent(new Event('cart-changed'));}
 export function addToCart(item:CartItem){const cart=getCart();const found=cart.find(x=>x.productId===item.productId);if(found)found.quantity+=item.quantity;else cart.push(item);saveCart(cart);}
+export function updateQuantity(productId:number,quantity:number){const cart=getCart();const item=cart.find(x=>x.productId===productId);if(!item)return;if(quantity<=0){saveCart(cart.filter(x=>x.productId!==productId));return;}item.quantity=quantity;saveCart(cart);}
 export function removeFromCart(productId:number){saveCart(getCart().filter(x=>x.productId!==productId));}
 export function cartCount(){return getCart().reduce((n,x)=>n+x.quantity,0)}
 export function clearCart(){saveCart([])}
