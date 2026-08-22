@@ -4,9 +4,17 @@ public static class MongoSeedData
  public static async Task InitializeAsync(EComDbContext db,AuthService auth,IConfiguration config)
  {
   var categories=new[]{("woolen-flowers","Woolen Flowers","Handcrafted woolen flowers.",1),("flower-bouquets","Flower Bouquets","Gift-ready handmade bouquets.",2),("resin-art","Resin Art","Decorative handmade resin artwork.",3)};
-  foreach(var c in categories)if(!await db.Categories.AnyAsync(x=>x.Slug==c.Item1))db.Categories.Add(new Category{Name=c.Item2,Slug=c.Item1,Description=c.Item3,DisplayOrder=c.Item4});
-  await db.SaveChangesAsync();
-  var categoryMap=await db.Categories.ToDictionaryAsync(x=>x.Slug,x=>x.Id);
+  foreach(var c in categories)
+  {
+   if(!await db.Categories.AnyAsync(x=>x.Slug==c.Item1))
+   {
+    db.Categories.Add(new Category{Name=c.Item2,Slug=c.Item1,Description=c.Item3,DisplayOrder=c.Item4});
+    // Mongo-backed EF tracks new entities before SaveChanges. Save each category separately
+    // so every generated numeric Id is unique before another Category is tracked.
+    await db.SaveChangesAsync();
+   }
+  }
+  var categoryMap=await db.Categories.AsNoTracking().ToDictionaryAsync(x=>x.Slug,x=>x.Id);
   var products=new[]{
    ("Woolen Rose Bouquet","WOL-ROSE-001","Soft handcrafted woolen roses arranged as a keepsake bouquet.",799m,999m,25,"woolen-flowers"),
    ("Woolen Lavender Bunch","WOL-LAV-001","Delicate woolen lavender stems for home decor and gifting.",649m,799m,30,"woolen-flowers"),
